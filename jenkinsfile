@@ -1,0 +1,67 @@
+import groovy.transform.Field
+import hudson.model.*
+import com.google.common.io.Files
+
+//Variable de entorno
+@Field nameStage
+//Variables SSH
+def userSSH = 'ubuntu'
+def server = '$Development_Server'
+def pathDeploy = '/home/ubuntu/Devs/'
+def credentialSSH = "develop_env"
+pipeline {
+    agent any
+    stages {
+        stage ('Pull new changes') {
+            steps{
+                setEnvironmentVariable(env.STAGE_NAME)
+                printLog("info","Se realiza pull de los cambios en el servidor de desarrollo",null)
+                script{
+                    try{
+                        withCredentials([sshUserPrivateKey(credentialsId: credentialSSH, keyFileVariable: 'keyfile')]) {    
+                        sh """
+                            ssh -i ${keyfile} ${userSSH}@${server} '''
+                                cd ${pathDeploy}
+                                if [ -d ${projectName} ]
+                                then
+                                    cd ${projectName}
+                                    git pull origin ${Rama}
+                                else
+                                    git clone -b ${Rama} https://github.com/Alejandrolara9/Devsu.git
+                                fi
+                            '''
+                        """
+                        }
+                    }catch(Exception err){
+                        error err
+                    }
+                    
+                }
+            }
+        }
+        stage('Terraform Init') {
+            steps {
+                // Inicializar Terraform
+                dir('terraform') {
+                    sh 'terraform init'
+                }
+            }
+        }
+        stage('Terraform Plan') {
+            steps {
+                // Planificar la creación de la infraestructura
+                dir('terraform') {
+                    sh 'terraform plan -out=tfplan'
+                }
+            }
+        }
+        stage('Terraform Apply') {
+            steps {
+                // Crear la infraestructura
+                dir('terraform') {
+                    sh 'terraform apply -auto-approve tfplan'
+                }
+            }
+        }
+    }
+}
