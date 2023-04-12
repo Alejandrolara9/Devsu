@@ -22,7 +22,7 @@ pipeline {
                         cd ${projectName}
                         git pull origin ${Rama}
                     else
-                        git clone 'https://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@github.com/Alejandrolara9/Devsu.git'
+                        git clone "${Repositorio}"
                     fi
                 """
             }
@@ -32,12 +32,10 @@ pipeline {
                 // Inicializar Terraform
                 dir('terraform') {
                     sh """ 
-                        cd ${pathDeploy}
-                        cd ${projectName}
-                        sh 'terraform init'
-                        sh 'terraform plan -out=tfplan'
-                        sh 'terraform apply -auto-approve tfplan'
-                            
+                        cd "${pathDeploy}/${projectName}"
+                        terraform init
+                        terraform plan -out=tfplan
+                        terraform apply -auto-approve tfplan    
                     """
                 }
             }
