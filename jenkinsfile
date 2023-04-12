@@ -1,7 +1,11 @@
 import groovy.transform.Field
 import hudson.model.*
 import com.google.common.io.Files
-
+//Variables Bitbucket
+def Rama = 'main'
+def Repositorio  = 'https://github.com/Alejandrolara9/Devsu.git'
+def credentialGitId  = 'github'
+def projectName = "Devsu"
 //Variable de entorno
 @Field nameStage
 //Variables SSH
