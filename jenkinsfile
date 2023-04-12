@@ -9,7 +9,7 @@ def projectName = "Devsu"
 //Variable de entorno
 @Field nameStage
 //Variables SSH
-def pathDeploy = '/home/ubuntu/agent/workspace/'
+def pathDeploy = '/home/ubuntu/Devs/'
 pipeline {
     agent any
     stages {
@@ -17,8 +17,7 @@ pipeline {
             steps {
                 sh """ 
                     cd ${pathDeploy}
-                    // Clonar el repositorio de código fuente
-                    git 'https://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@github.com/Alejandrolara9/Devsu.git'
+                    git clone 'https://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@github.com/Alejandrolara9/Devsu.git'
                 """
             }
         }
