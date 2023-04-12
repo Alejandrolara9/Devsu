@@ -17,7 +17,13 @@ pipeline {
             steps {
                 sh """ 
                     cd ${pathDeploy}
-                    git clone 'https://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@github.com/Alejandrolara9/Devsu.git'
+                    if [ -d ${projectName} ]
+                    then
+                        cd ${projectName}
+                        git pull origin ${Rama}
+                    else
+                        git clone 'https://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@github.com/Alejandrolara9/Devsu.git'
+                    fi
                 """
             }
         }
@@ -27,16 +33,11 @@ pipeline {
                 dir('terraform') {
                     sh """ 
                         cd ${pathDeploy}
-                        if [ -d ${projectName} ]
-                            then
-                                cd ${projectName}
-                                git pull origin ${Rama}
-                                sh 'terraform init'
-                                sh 'terraform plan -out=tfplan'
-                                sh 'terraform apply -auto-approve tfplan'
-                            else
-                                git clone -b ${Rama} git@bitbucket.org:imagineappsdev/iexpert-back-end.git
-                        fi
+                        cd ${projectName}
+                        sh 'terraform init'
+                        sh 'terraform plan -out=tfplan'
+                        sh 'terraform apply -auto-approve tfplan'
+                            
                     """
                 }
             }
