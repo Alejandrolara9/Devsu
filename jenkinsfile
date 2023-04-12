@@ -9,17 +9,17 @@ def projectName = "Devsu"
 //Variable de entorno
 @Field nameStage
 //Variables SSH
-def userSSH = 'ubuntu'
-def server = '$Development_Server'
-def pathDeploy = '/home/ubuntu/Devs/'
-def credentialSSH = "develop_env"
+def pathDeploy = '/home/ubuntu/agent/workspace/'
 pipeline {
     agent any
     stages {
         stage('Checkout') {
             steps {
-                // Clonar el repositorio de código fuente
-                git 'https://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@github.com/Alejandrolara9/Devsu.git'
+                sh """ 
+                    cd ${pathDeploy}
+                    // Clonar el repositorio de código fuente
+                    git 'https://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@github.com/Alejandrolara9/Devsu.git'
+                """
             }
         }
         stage('Terraform Init') {
