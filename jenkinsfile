@@ -16,31 +16,10 @@ def credentialSSH = "develop_env"
 pipeline {
     agent any
     stages {
-        stage ('Pull new changes') {
-            steps{
-                setEnvironmentVariable(env.STAGE_NAME)
-                printLog("info","Se realiza pull de los cambios en el servidor de desarrollo",null)
-                script{
-                    try{
-                        withCredentials([sshUserPrivateKey(credentialsId: credentialSSH, keyFileVariable: 'keyfile')]) {    
-                        sh """
-                            ssh -i ${keyfile} ${userSSH}@${server} '''
-                                cd ${pathDeploy}
-                                if [ -d ${projectName} ]
-                                then
-                                    cd ${projectName}
-                                    git pull origin ${Rama}
-                                else
-                                    git clone -b ${Rama} https://github.com/Alejandrolara9/Devsu.git
-                                fi
-                            '''
-                        """
-                        }
-                    }catch(Exception err){
-                        error err
-                    }
-                    
-                }
+        stage('Checkout') {
+            steps {
+                // Clonar el repositorio de código fuente
+                git 'https://github.com/Alejandrolara9/Devsu.git'
             }
         }
         stage('Terraform Init') {
