@@ -25,17 +25,19 @@ pipeline {
             steps {
                 // Inicializar Terraform
                 dir('terraform') {
-                    cd ${pathDeploy}
-                    if [ -d ${projectName} ]
-                        then
-                            cd ${projectName}
-                            git pull origin ${Rama}
-                            sh 'terraform init'
-                            sh 'terraform plan -out=tfplan'
-                            sh 'terraform apply -auto-approve tfplan'
-                        else
-                            git clone -b ${Rama} git@bitbucket.org:imagineappsdev/iexpert-back-end.git
-                    fi
+                    sh """ 
+                        cd ${pathDeploy}
+                        if [ -d ${projectName} ]
+                            then
+                                cd ${projectName}
+                                git pull origin ${Rama}
+                                sh 'terraform init'
+                                sh 'terraform plan -out=tfplan'
+                                sh 'terraform apply -auto-approve tfplan'
+                            else
+                                git clone -b ${Rama} git@bitbucket.org:imagineappsdev/iexpert-back-end.git
+                        fi
+                    """
                 }
             }
         }
