@@ -19,7 +19,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 // Clonar el repositorio de código fuente
-                git 'https://github.com/Alejandrolara9/Devsu.git'
+                git 'https://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@github.com/Alejandrolara9/Devsu.git'
             }
         }
         stage('Terraform Init') {
