@@ -1,0 +1,10 @@
+version: '3'
+services:
+  app:
+    image: martinalarame/api_nodejs_test:v1.0.0
+    container_name: api_backend_nodejs_test
+    build: .
+    ports:
+      - "4000:4000"
+    environment:
+      - API_KEY=2f5ae96c-b558-4c7b-a590-a501ae1c3f6c
