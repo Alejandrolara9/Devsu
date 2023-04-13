@@ -1,0 +1,199 @@
+//Devsu Backend DEV
+import groovy.transform.Field
+import hudson.model.*
+import com.google.common.io.Files
+
+//Variable de entorno
+@Field nameStage
+//Variables Bitbucket
+def Rama = 'develop'
+def Repositorio  = 'https://github.com/Alejandrolara9/Devsu.git'
+def credentialGitId  = 'github'
+def projectName = "Devsu"
+
+//Variables Sonar
+def projectKeySonar="${env.JOB_BASE_NAME}"
+def pathSourceSonar= 'proyecto'
+
+//Variables SSH
+def userSSH = 'ubuntu'
+def server = '$Development_Server'
+def pathWorkspace = '/home/ubuntu/agent/workspace/'
+def pathDeploy = '/home/ubuntu/develop/projects/Devsu/'
+def api = '/proyecto'
+def credentialSSH = "develop_env"
+
+pipeline{
+    agent { label 'slave' }
+    stages{
+        stage ('Download Code GIT') {
+            steps{
+                cleanWs()
+                setEnvironmentVariable(env.STAGE_NAME)
+                printLog("info","Se inicia la descarga del repositorio",null)
+                checkout([$class: 'GitSCM', branches: [[name: Rama]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: credentialGitId, url: Repositorio]]])
+            }
+        }
+        stage ('SonarQube Analisis') {
+            steps{
+                setEnvironmentVariable(env.STAGE_NAME)
+                printLog("info","Análisis de código en SonarQube para el proyecto ${projectKeySonar}",null)
+                script{
+                    //Analisis de codigo estático con Sonarqube
+                    def scannerHome = tool 'Sonar-Scanner';
+                    withSonarQubeEnv('SonarQube_Server') {
+                        sh "${scannerHome}/bin/sonar-scanner -Dsonar.java.binaries=. -Dsonar.projectKey=${projectKeySonar} -Dsonar.sources=${pathSourceSonar}"
+                        sh "sleep 15"
+                    }
+                    timeout(time: 2, unit: 'MINUTES') { // Just in case something goes wrong, pipeline will be killed after a timeout
+                        def qg = waitForQualityGate() // Reuse taskId previously collected by withSonarQubeEnv
+                        if (qg.status != 'OK') {
+                            slackSend channel: '#expertos-app', color:'danger', message: "SonarQube - Quality Gates failed for ${projectKeySonar}. More information at ${SonarQubeUrl}${projectKeySonar}"
+                            error "Pipeline aborted due to quality gate failure: ${qg.status}"
+                        }else{
+                            slackSend channel: '#expertos-app', color:'good', message: "SonarQube ${projectKeySonar} - Congratulations, you don't have new issues in your code! Keep it up :100:"
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage ('Pull new changes') {
+            steps{
+                setEnvironmentVariable(env.STAGE_NAME)
+                printLog("info","Se realiza pull de los cambios en el servidor de desarrollo",null)
+                script{
+                    try{
+                        withCredentials([sshUserPrivateKey(credentialsId: credentialSSH, keyFileVariable: 'keyfile')]) {    
+                        sh """
+                            ssh -i ${keyfile} ${userSSH}@${server} '''
+                                cd ${pathDeploy}
+                                if [ -d ${projectName} ]
+                                then
+                                    cd ${projectName}
+                                    git pull origin ${Rama}
+                                else
+                                    git clone -b ${Rama} git@bitbucket.org:imagineappsdev/Devsu.git
+                                fi
+                            '''
+                        """
+                        }
+                    }catch(Exception err){
+                        error err
+                    }
+                    
+                }
+            }
+        }
+        stage ('Clean last version') {
+            steps{
+                setEnvironmentVariable(env.STAGE_NAME)
+                printLog("info","Se ejecuta docker compose down para bajar servicio anterior",null)
+                script{
+                    withCredentials([sshUserPrivateKey(credentialsId: credentialSSH, keyFileVariable: 'keyfile')]) {    
+                    sh """
+                        sudo ssh -i ${keyfile} ${userSSH}@${server} '''
+                            cd ${pathDeploy}${projectName}
+                            docker-compose down
+                        '''
+                    """
+                    }
+                }
+            }
+            
+        }
+        stage('Test') {
+            steps {
+                setEnvironmentVariable(env.STAGE_NAME)
+                printLog("info","Se reconstruye la imagén y el contenedor",null)
+                script{
+                    withCredentials([sshUserPrivateKey(credentialsId: credentialSSH, keyFileVariable: 'keyfile')]) {    
+                    sh """
+                        ssh -i ${keyfile} ${userSSH}@${server} '''
+                            cd ${pathDeploy}${projectName}${api}
+                            docker-compose -f test/docker-compose.yml --project-directory . up --build -d
+                            exit
+                        '''
+                    """
+                    }
+                }
+            }
+            post {
+                always {
+                    junit 'test-results/**/*.xml'
+                }
+                success {
+                    slackSend (color: 'good', message: "All tests passed!")
+                }
+                failure {
+                    slackSend (color: 'danger', message: "Some tests failed, please check the build logs!")
+                }
+            }
+        }   
+        stage ('Deploy container') {
+            steps{
+                setEnvironmentVariable(env.STAGE_NAME)
+                printLog("info","Se reconstruye la imagén y el contenedor",null)
+                script{
+                    withCredentials([sshUserPrivateKey(credentialsId: credentialSSH, keyFileVariable: 'keyfile')]) {    
+                    sh """
+                        ssh -i ${keyfile} ${userSSH}@${server} '''
+                            cd ${pathDeploy}${projectName}${api}
+                            docker-compose push
+                            exit
+                        '''
+                    """
+                    }
+                }
+                
+            }
+        }
+    }
+    post{
+        always{
+            cleanWs()
+        }
+        success {
+            slackSend channel: '#jenkins',color:'good', message: "Build deployed successfully :good_job: - ${env.JOB_NAME} ${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>) "
+        }
+        failure {
+            script{
+                if (nameStage != "SonarQube Analisis"){
+                    slackSend channel: '#jenkins',color:'danger', message:"Build failed :crycat: - ${env.JOB_NAME} ${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)"
+                }
+            }   
+        }
+    }
+}
+
+def printLog(String type, String message,String stage){
+    def color="43m"
+    if(type.equals("info")){
+        color="43m"
+    } 
+    else if(type.equals("error")){
+        color="41m"
+        if(messageError){
+            messageError=messageError+"/ "+message
+        }else{
+            messageError=message
+        }
+        message="Failed "+message
+        if(stage){
+            if(stageError){
+                stageError=stageError+","+stage
+            }else{
+            stageError=stage
+            }   
+        }
+    }
+    if(color && message){
+        ansiColor('xterm') {
+        echo "\033[${color}******************** ${message} ********************\033[0m"
+        }
+    }
+}
+//Función para guardar el nombre del stage
+def setEnvironmentVariable(String stage){
+    nameStage = stage
+}

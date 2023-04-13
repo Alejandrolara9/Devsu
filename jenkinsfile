@@ -6,6 +6,7 @@ def Rama = 'main'
 def Repositorio  = 'https://github.com/Alejandrolara9/Devsu.git'
 def credentialGitId  = 'github'
 def projectName = "Devsu"
+def kluster = "terraform-eks-demo"
 //Variable de entorno
 @Field nameStage
 //Variables SSH
@@ -36,6 +37,20 @@ pipeline {
                         terraform init
                         terraform plan -out=tfplan
                         terraform apply -auto-approve tfplan    
+                    """
+                }
+            }
+        }
+        stage('Load balance') {
+            steps {
+                // Inicializar Terraform
+                dir('terraform') {
+                    sh """ 
+                        cd "${pathDeploy}/${projectName}"
+                        aws eks --region us-east-1 update-kubeconfig --name ${kluster}
+                        kubectl apply -f ./k8s/kubernetes-service.yaml
+                        kubectl apply -f ./k8s/proyecto.yaml
+                        kubectl expose deployment api --type=LoadBalancer --port=3000 --target-port=3000
                     """
                 }
             }

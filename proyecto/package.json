@@ -1,7 +1,7 @@
 {
   "name": "mi-proyecto",
   "version": "1.0.0",
-  "description": "Descripci�n de mi proyecto",
+  "description": "Descripción de mi proyecto",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

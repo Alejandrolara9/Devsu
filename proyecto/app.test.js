@@ -4,11 +4,6 @@ const jwt = require("jsonwebtoken");
 const bodyParser = require("body-parser");
 const app = express();
 
-// Reemplaza este bloque de código con el archivo original
-// ...
-// Incluir aquí el código de tu archivo original (app.js)
-// ...
-
 app.use(bodyParser.json());
 
 // Pruebas unitarias
